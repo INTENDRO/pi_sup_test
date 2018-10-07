@@ -6,6 +6,8 @@ crc8 -> crc16
 
 """
 
+SUP_USE_CRC8 = False
+
 
 class SupDataLengthException(Exception):
 	pass
@@ -108,21 +110,34 @@ class Sup:
 
 		packet = [data_length-1]
 		packet.extend(data_list)
-		crc16 = self.crc16(packet)
-		packet.append(crc16 & 0xFF)
-		packet.append((crc16>>8) & 0xFF)
+		if SUP_USE_CRC8:
+			crc8 = self.crc8(packet)
+			packet.append(crc8 & 0xFF)
+		else:
+			crc16 = self.crc16(packet)
+			packet.append(crc16 & 0xFF)
+			packet.append((crc16>>8) & 0xFF)
 
 		return packet
 
 
 	def unpackage(self, data_list):
-		if self.crc16(data_list) != 0:
-			raise SupCRCError("CRC incorrect!")
+		if SUP_USE_CRC8:
+			if self.crc8(data_list) != 0:
+				raise SupCRCError("CRC incorrect!")
 
-		if (data_list[0]+4) != len(data_list):
-			raise SupDataLengthException("Packet length does not match the length byte in the packet! (Packet: {}  Length byte: {})".format(len(data_length-2),data_list[0]+1))
+			if (data_list[0]+3) != len(data_list):
+				raise SupDataLengthException("Packet length does not match the length byte in the packet! (Packet: {}  Length byte: {})".format(len(data_list)-2,data_list[0]+1))
 
-		return data_list[1:-2]
+			return data_list[1:-1]
+		else:
+			if self.crc16(data_list) != 0:
+				raise SupCRCError("CRC incorrect!")
+
+			if (data_list[0]+4) != len(data_list):
+				raise SupDataLengthException("Packet length does not match the length byte in the packet! (Packet: {}  Length byte: {})".format(len(data_list)-3,data_list[0]+1))
+
+			return data_list[1:-2]
 
 
 	def stuff(self, data_list):

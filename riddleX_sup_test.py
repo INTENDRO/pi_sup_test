@@ -192,6 +192,8 @@ wait_for_return = False
 oldtime = time.time()
 
 error_list = []
+sup_error_data_list = []
+time_list = []
 
 try:
 	while True:
@@ -201,6 +203,7 @@ try:
 
 			if wait_for_return:
 				error_list.append(data)
+				sup_error_data_list.append(sup_data)
 
 			data += 1
 			if data == 256:
@@ -208,7 +211,8 @@ try:
 			
 			print("Send: 0x{:02x}".format(data))
 			# mySup.print_list_hex_byte(mySup.send([data]))
-			uart_port.write(mySup.send([data]))
+			sup_data = mySup.send([data])
+			uart_port.write(sup_data)
 			wait_for_return = True
 			
 			
@@ -223,7 +227,9 @@ try:
 				temp = mySup.receive(temp)
 				if (len(temp) == 1) and (temp[0] == data):
 					wait_for_return = False
-					print("time diff: {:.6f}".format(time.time()-oldtime))
+					time_diff = time.time()-oldtime
+					print("time diff: {:.6f}".format(time_diff))
+					time_list.append(time_diff)
 			except (sup.SupDataLengthException, sup.SupCRCError, sup.SupStuffError):
 				pass
 
@@ -233,6 +239,17 @@ except KeyboardInterrupt:
 
 print("error_list: ")
 mySup.print_list_hex_byte(error_list)
+print()
+
+print("error data list: ")
+for x in sup_error_data_list:
+	mySup.print_list_hex_byte(x)
+print()
+
+print("avg time: {:.6f}".format(statistics.mean(time_list)))
+print("median time: {:.6f}".format(statistics.median(time_list)))
+print("message count: ", len(time_list))
+print("error rate: {:.3f}%".format(len(error_list)*100/len(time_list)))
 
 ##############################################################################
 
